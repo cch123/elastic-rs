@@ -51,8 +51,8 @@ fn main() {
         .next()
         .unwrap();
     let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-
+    dbg!(&tree);
+    println!("{}", walk_tree(tree));
 }
 
 use pest::iterators::Pair;
@@ -119,3 +119,16 @@ fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
     }
 }
 
+fn walk_tree(n: Node) -> String {
+    match n {
+        Node::AndExpr { left, right } => {
+            return walk_tree(*left) + " and " + &walk_tree(*right);
+        }
+        Node::OrExpr { left, right } => {
+            return walk_tree(*left) + " or " + &walk_tree(*right);
+        }
+        Node::CompExpr { lhs, op, rhs } => {
+            return lhs + &op + &rhs;
+        }
+    }
+}
