@@ -138,45 +138,49 @@ fn walk_tree(n: Node) -> String {
     match n {
         Node::AndExpr { left, right } => {
             let left_str = walk_tree(*left);
-            let right_str= walk_tree(*right);
-            return format!(r##"{{"bool" : {{"must" : [{}, {}]}}}}"##, left_str, right_str)
+            let right_str = walk_tree(*right);
+            return format!(
+                r##"{{"bool" : {{"must" : [{}, {}]}}}}"##,
+                left_str, right_str
+            );
         }
         Node::OrExpr { left, right } => {
             let left_str = walk_tree(*left);
-            let right_str= walk_tree(*right);
-            return format!(r##"{{"bool" : {{"should" : [{}, {}]}}}}"##, left_str, right_str)
+            let right_str = walk_tree(*right);
+            return format!(
+                r##"{{"bool" : {{"should" : [{}, {}]}}}}"##,
+                left_str, right_str
+            );
         }
-        Node::CompExpr { lhs, op, rhs } => {
-            match op.as_str() {
-                "=" => {
-                    return format!(
-                        r##"{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}"##,
-                        lhs, rhs
-                    );
-                }
-                ">=" => {
-                    return format!(r##"{{"range" : {{"{}" : {{"from" : "{}"}}}}}}""##, lhs, rhs);
-                }
-                "<=" => {
-                    return format!(r##"{{"range" : {{"{}" : {{"to" : "{}"}}}}}}""##, lhs, rhs);
-                }
-                ">" => {
-                    return format!(r##"{{"range" : {{"{}" : {{"gt" : "{}"}}}}}}""##, lhs, rhs);
-                }
-                "<" => {
-                    return format!(r##"{{"range" : {{"{}" : {{"lt" : "{}"}}}}}}""##, lhs, rhs);
-                }
-                "!=" | "<>" => {
-                    return format!(r##"{{"bool" : {{"must_not" : [{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}]}}}}"##, lhs, rhs);
-                }
-                "in" => {
-                    return "".to_string();
-                }
-                "not in" => {
-                    return "".to_string();
-                }
-                _ => unreachable!(),
+        Node::CompExpr { lhs, op, rhs } => match op.as_str() {
+            "=" => {
+                return format!(
+                    r##"{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}"##,
+                    lhs, rhs
+                );
             }
-        }
+            ">=" => {
+                return format!(r##"{{"range" : {{"{}" : {{"from" : "{}"}}}}}}""##, lhs, rhs);
+            }
+            "<=" => {
+                return format!(r##"{{"range" : {{"{}" : {{"to" : "{}"}}}}}}""##, lhs, rhs);
+            }
+            ">" => {
+                return format!(r##"{{"range" : {{"{}" : {{"gt" : "{}"}}}}}}""##, lhs, rhs);
+            }
+            "<" => {
+                return format!(r##"{{"range" : {{"{}" : {{"lt" : "{}"}}}}}}""##, lhs, rhs);
+            }
+            "!=" | "<>" => {
+                return format!(r##"{{"bool" : {{"must_not" : [{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}]}}}}"##, lhs, rhs);
+            }
+            "in" => {
+                return "".to_string();
+            }
+            "not in" => {
+                return "".to_string();
+            }
+            _ => unreachable!(),
+        },
     }
 }
