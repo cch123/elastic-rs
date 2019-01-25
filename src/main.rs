@@ -46,13 +46,28 @@ fn main() {
         .unwrap();
     let tree = parse_expr(expr).unwrap();
     dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "(a=1 and ((b = 2) and c=1))")
+    let expr = ExprParser::parse(Rule::expr, "(a=1 and ((b = 2) and c=3))")
         .expect("parse failed")
         .next()
         .unwrap();
     let tree = parse_expr(expr).unwrap();
     dbg!(&tree);
     println!("{}", walk_tree(tree));
+
+    /*
+    这是处理错误的 example
+    let expr = ExprParser::parse(Rule::bool_expr, "a=1 and ((b = 2) and c=1))");
+    match expr {
+        Ok(res) => {
+            dbg!(res);
+        }
+        Err(err) => {
+            dbg!(err.variant);
+            dbg!(err.location);
+            dbg!(err.line_col);
+        }
+    }
+    */
 }
 
 use pest::iterators::Pair;
@@ -122,13 +137,46 @@ fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
 fn walk_tree(n: Node) -> String {
     match n {
         Node::AndExpr { left, right } => {
-            return walk_tree(*left) + " and " + &walk_tree(*right);
+            let left_str = walk_tree(*left);
+            let right_str= walk_tree(*right);
+            return format!(r##"{{"bool" : {{"must" : [{}, {}]}}}}"##, left_str, right_str)
         }
         Node::OrExpr { left, right } => {
-            return walk_tree(*left) + " or " + &walk_tree(*right);
+            let left_str = walk_tree(*left);
+            let right_str= walk_tree(*right);
+            return format!(r##"{{"bool" : {{"should" : [{}, {}]}}}}"##, left_str, right_str)
         }
         Node::CompExpr { lhs, op, rhs } => {
-            return lhs + &op + &rhs;
+            match op.as_str() {
+                "=" => {
+                    return format!(
+                        r##"{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}"##,
+                        lhs, rhs
+                    );
+                }
+                ">=" => {
+                    return format!(r##"{{"range" : {{"{}" : {{"from" : "{}"}}}}}}""##, lhs, rhs);
+                }
+                "<=" => {
+                    return format!(r##"{{"range" : {{"{}" : {{"to" : "{}"}}}}}}""##, lhs, rhs);
+                }
+                ">" => {
+                    return format!(r##"{{"range" : {{"{}" : {{"gt" : "{}"}}}}}}""##, lhs, rhs);
+                }
+                "<" => {
+                    return format!(r##"{{"range" : {{"{}" : {{"lt" : "{}"}}}}}}""##, lhs, rhs);
+                }
+                "!=" | "<>" => {
+                    return format!(r##"{{"bool" : {{"must_not" : [{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}]}}}}"##, lhs, rhs);
+                }
+                "in" => {
+                    return "".to_string();
+                }
+                "not in" => {
+                    return "".to_string();
+                }
+                _ => unreachable!(),
+            }
         }
     }
 }
