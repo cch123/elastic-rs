@@ -9,73 +9,34 @@ use pest::Parser;
 #[grammar = "expr.pest"]
 pub struct ExprParser;
 
-fn main() {
-    let expr = ExprParser::parse(Rule::expr, r#"a = "2121""#)
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, r#"a = 1 and b = 2"#)
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "(a=1) and (b=2)")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "a=1 and b=2")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "a=1 and ((b = 2) and c=1)")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "a in 1")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(tree);
-    let expr = ExprParser::parse(Rule::expr, "(a=1 and ((b = 2) and c=3))")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(&tree);
-    println!("{}", walk_tree(tree));
+#[derive(Debug)]
+pub struct ParseError {
+    location: i32,
+    expected: String,
+    the_char: char,
+}
 
-    let expr = ExprParser::parse(Rule::expr, "a=1")
-        .expect("parse failed")
-        .next()
-        .unwrap();
-    let tree = parse_expr(expr).unwrap();
-    dbg!(&tree);
-    println!("{}", convert(tree));
-
-    /*
-    这是处理错误的 example
-    let expr = ExprParser::parse(Rule::bool_expr, "a=1 and ((b = 2) and c=1))");
-    match expr {
-        Ok(res) => {
-            dbg!(res);
+pub fn convert(input: String) -> Result<String, ParseError> {
+    let parse_result = ExprParser::parse(Rule::expr, input.as_str());
+    match parse_result {
+        Ok(mut expr_ast) => {
+            let tree = simplify_ast(expr_ast.next().unwrap()).unwrap();
+            let dsl = traverse(tree);
+            Ok(dsl)
         }
-        Err(err) => {
+        Err(_) => {
+            /*
             dbg!(err.variant);
             dbg!(err.location);
             dbg!(err.line_col);
+            */
+            Err(ParseError {
+                location: 0,
+                expected: "".to_string(),
+                the_char: 'c',
+            })
         }
     }
-    */
 }
 
 use pest::iterators::Pair;
@@ -97,16 +58,16 @@ enum Node {
     },
 }
 
-fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
+fn simplify_ast(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
     match record.clone().as_rule() {
         Rule::bool_expr | Rule::expr | Rule::paren_bool => {
-            return parse_expr(record.into_inner().next().unwrap());
+            return simplify_ast(record.into_inner().next().unwrap());
         }
         Rule::or_expr => {
             let mut iter = record.into_inner();
             let (left_tree, right_tree) = (
-                parse_expr(iter.next().unwrap()).unwrap(),
-                parse_expr(iter.next().unwrap()).unwrap(),
+                simplify_ast(iter.next().unwrap()).unwrap(),
+                simplify_ast(iter.next().unwrap()).unwrap(),
             );
             return Ok(Node::OrExpr {
                 left: Box::new(left_tree),
@@ -116,8 +77,8 @@ fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
         Rule::and_expr => {
             let mut iter = record.into_inner();
             let (left_tree, right_tree) = (
-                parse_expr(iter.next().unwrap()).unwrap(),
-                parse_expr(iter.next().unwrap()).unwrap(),
+                simplify_ast(iter.next().unwrap()).unwrap(),
+                simplify_ast(iter.next().unwrap()).unwrap(),
             );
             return Ok(Node::AndExpr {
                 left: Box::new(left_tree),
@@ -142,9 +103,9 @@ fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
     }
 }
 
-fn convert(n: Node) -> String {
+fn traverse(n: Node) -> String {
     match n {
-        Node::CompExpr{..} => return format!(r#"{{"bool" : {{"must" : [{}]}}}}"#, walk_tree(n)),
+        Node::CompExpr { .. } => return format!(r#"{{"bool" : {{"must" : [{}]}}}}"#, walk_tree(n)),
         _ => return walk_tree(n),
     }
 }
@@ -217,3 +178,21 @@ fn walk_tree(n: Node) -> String {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::convert;
+    struct TestCase {
+        input : String,
+        output : String,
+    }
+
+    #[test]
+    fn test_convert() {
+        let test_cases:Vec<TestCase> = vec![];
+        test_cases.iter().for_each(|case|{
+            assert_eq!(convert(case.input.clone()).unwrap(), case.output)
+        });
+    }
+}
+
