@@ -20,7 +20,7 @@ paren_bool = { "(" ~ (expr) ~  ")" }
 comp_expr = { field ~ op ~ value }
 
 field = @{ (ASCII_ALPHA ~ ASCII_ALPHANUMERIC*) }
-op = { "="| "!="| "<>"| "in" | "not in" | ">" | ">=" | "<" | "<=" | "is" | "is not" }
+op = { "="| "!="| "<>"| "in" | "not in" | ">" | ">=" | "<" | "<=" | "like" }
 
 value = { string_literal | num_literal }
 

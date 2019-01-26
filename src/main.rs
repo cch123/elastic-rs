@@ -54,6 +54,14 @@ fn main() {
     dbg!(&tree);
     println!("{}", walk_tree(tree));
 
+    let expr = ExprParser::parse(Rule::expr, "a=1")
+        .expect("parse failed")
+        .next()
+        .unwrap();
+    let tree = parse_expr(expr).unwrap();
+    dbg!(&tree);
+    println!("{}", convert(tree));
+
     /*
     这是处理错误的 example
     let expr = ExprParser::parse(Rule::bool_expr, "a=1 and ((b = 2) and c=1))");
@@ -134,6 +142,13 @@ fn parse_expr(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
     }
 }
 
+fn convert(n: Node) -> String {
+    match n {
+        Node::CompExpr{..} => return format!(r#"{{"bool" : {{"must" : [{}]}}}}"#, walk_tree(n)),
+        _ => return walk_tree(n),
+    }
+}
+
 fn walk_tree(n: Node) -> String {
     match n {
         Node::AndExpr { left, right } => {
@@ -153,7 +168,7 @@ fn walk_tree(n: Node) -> String {
             );
         }
         Node::CompExpr { lhs, op, rhs } => match op.as_str() {
-            "=" => {
+            "=" | "like" => {
                 return format!(
                     r##"{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}"##,
                     lhs, rhs
@@ -175,10 +190,28 @@ fn walk_tree(n: Node) -> String {
                 return format!(r##"{{"bool" : {{"must_not" : [{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}]}}}}"##, lhs, rhs);
             }
             "in" => {
-                return "".to_string();
+                return format!(
+                    r##"{{"terms" : {{"{}" : {}}}}}"##,
+                    lhs,
+                    "[".to_string()
+                        + rhs
+                            .replace("\'", "\"")
+                            .trim_left_matches("(")
+                            .trim_right_matches(")")
+                        + "]"
+                );
             }
             "not in" => {
-                return "".to_string();
+                return format!(
+                    r##"{{"bool" : {{"must_not" : {{"terms" : {{"{}" : {} }}}}}}}}"##,
+                    lhs,
+                    "[".to_string()
+                        + rhs
+                            .replace("\'", "\"")
+                            .trim_left_matches("(")
+                            .trim_right_matches(")")
+                        + "]"
+                );
             }
             _ => unreachable!(),
         },
