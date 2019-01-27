@@ -2,6 +2,9 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+extern crate serde_json;
+use serde_json::json;
+
 use pest::error::Error;
 use pest::Parser;
 
@@ -14,6 +17,12 @@ pub struct ParseError {
     location: i32,
     expected: String,
     the_char: char,
+}
+
+use std::collections::HashMap;
+
+pub fn convert_to_map() -> HashMap<String, String> {
+    HashMap::new()
 }
 
 pub fn convert(input: String) -> Result<String, ParseError> {
@@ -110,6 +119,72 @@ fn traverse(n: Node) -> String {
     }
 }
 
+fn walk_tree2(n: Node) -> serde_json::Value {
+    match n {
+        Node::AndExpr { left, right } => {
+            let left_str = walk_tree(*left);
+            let right_str = walk_tree(*right);
+            return serde_json::json!({
+                "bool" : {
+                    "must" : format!("[{}, {}]", left_str, right_str),
+                }
+            })
+        }
+        Node::OrExpr { left, right } => {
+            let left_str = walk_tree(*left);
+            let right_str = walk_tree(*right);
+
+            return json!({
+                "bool" : {
+                    "should" : format!("[{}, {}]", left_str, right_str)
+                }
+            })
+        }
+        Node::CompExpr { lhs, op, rhs } => match op.as_str() {
+            "=" | "like" => {
+                return json!({
+                    "match" : {
+                        lhs : {
+                            "query" : rhs,
+                            "type" : "phrase"
+                        }
+                    }
+                })
+            }
+            ">=" => {
+                return json!({"range" : {lhs : {"from" : rhs}}});
+            }
+            "<=" => {
+                return json!({"range" : {lhs : {"to" : rhs}}});
+            }
+            ">" => {
+                return json!({"range" : {lhs : {"gt" : rhs}}})
+            }
+            "<" => {
+                return json!({"range" : {lhs : {"lt" : rhs}}})
+            }
+            "!=" | "<>" => {
+                return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
+            }
+            "not in" => {
+                return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
+                /*
+                return format!(
+                    r##"{{"bool" : {{"must_not" : {{"terms" : {{"{}" : {} }}}}}}}}"##,
+                    lhs,
+                    "[".to_string()
+                        + rhs
+                        .replace("\'", "\"")
+                        .trim_left_matches("(")
+                        .trim_right_matches(")")
+                        + "]"
+                );
+                */
+            }
+            _ => unreachable!(),
+        },
+    }
+}
 fn walk_tree(n: Node) -> String {
     match n {
         Node::AndExpr { left, right } => {
