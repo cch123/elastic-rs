@@ -128,7 +128,7 @@ fn walk_tree2(n: Node) -> serde_json::Value {
                 "bool" : {
                     "must" : format!("[{}, {}]", left_str, right_str),
                 }
-            })
+            });
         }
         Node::OrExpr { left, right } => {
             let left_str = walk_tree(*left);
@@ -138,7 +138,7 @@ fn walk_tree2(n: Node) -> serde_json::Value {
                 "bool" : {
                     "should" : format!("[{}, {}]", left_str, right_str)
                 }
-            })
+            });
         }
         Node::CompExpr { lhs, op, rhs } => match op.as_str() {
             "=" | "like" => {
@@ -149,7 +149,7 @@ fn walk_tree2(n: Node) -> serde_json::Value {
                             "type" : "phrase"
                         }
                     }
-                })
+                });
             }
             ">=" => {
                 return json!({"range" : {lhs : {"from" : rhs}}});
@@ -157,29 +157,30 @@ fn walk_tree2(n: Node) -> serde_json::Value {
             "<=" => {
                 return json!({"range" : {lhs : {"to" : rhs}}});
             }
-            ">" => {
-                return json!({"range" : {lhs : {"gt" : rhs}}})
-            }
-            "<" => {
-                return json!({"range" : {lhs : {"lt" : rhs}}})
-            }
+            ">" => return json!({"range" : {lhs : {"gt" : rhs}}}),
+            "<" => return json!({"range" : {lhs : {"lt" : rhs}}}),
             "!=" | "<>" => {
                 return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
             }
+            "in" => {
+                let x = rhs.replace("\'", "\"");
+                let r_vec: Vec<&str> = x
+                    .trim_left_matches("(")
+                    .trim_right_matches(")")
+                    .split(",")
+                    .collect();
+                return json!({
+                    "terms" : {lhs : r_vec}
+                });
+            }
             "not in" => {
-                return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
-                /*
-                return format!(
-                    r##"{{"bool" : {{"must_not" : {{"terms" : {{"{}" : {} }}}}}}}}"##,
-                    lhs,
-                    "[".to_string()
-                        + rhs
-                        .replace("\'", "\"")
-                        .trim_left_matches("(")
-                        .trim_right_matches(")")
-                        + "]"
-                );
-                */
+                let x = rhs.replace("\'", "\"");
+                let r_vec: Vec<&str> = x
+                    .trim_left_matches("(")
+                    .trim_right_matches(")")
+                    .split(",")
+                    .collect();
+                return json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}});
             }
             _ => unreachable!(),
         },
@@ -258,16 +259,15 @@ fn walk_tree(n: Node) -> String {
 mod tests {
     use super::convert;
     struct TestCase {
-        input : String,
-        output : String,
+        input: String,
+        output: String,
     }
 
     #[test]
     fn test_convert() {
-        let test_cases:Vec<TestCase> = vec![];
-        test_cases.iter().for_each(|case|{
-            assert_eq!(convert(case.input.clone()).unwrap(), case.output)
-        });
+        let test_cases: Vec<TestCase> = vec![];
+        test_cases
+            .iter()
+            .for_each(|case| assert_eq!(convert(case.input.clone()).unwrap(), case.output));
     }
 }
-
