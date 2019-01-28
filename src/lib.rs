@@ -185,14 +185,21 @@ fn walk_tree(n: Node) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::convert;
+    use serde_json::json;
+
     struct TestCase {
         input: String,
-        output: String,
+        output: serde_json::Value,
     }
 
     #[test]
     fn test_convert() {
-        let test_cases: Vec<TestCase> = vec![];
+        let test_cases: Vec<TestCase> = vec![
+            TestCase {
+                input : "a=1".to_string(),
+                output : json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}})
+            }
+        ];
         test_cases
             .iter()
             .for_each(|case| assert_eq!(convert(case.input.clone()).unwrap(), case.output));
