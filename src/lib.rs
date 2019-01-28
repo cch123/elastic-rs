@@ -19,19 +19,13 @@ pub struct ParseError {
     the_char: char,
 }
 
-use std::collections::HashMap;
-
-pub fn convert_to_map() -> HashMap<String, String> {
-    HashMap::new()
-}
-
-pub fn convert(input: String) -> Result<String, ParseError> {
-    let parse_result = ExprParser::parse(Rule::expr, input.as_str());
+pub fn convert(query: String) -> Result<serde_json::Value, ParseError> {
+    let parse_result = ExprParser::parse(Rule::expr, query.as_str());
     match parse_result {
         Ok(mut expr_ast) => {
             let tree = simplify_ast(expr_ast.next().unwrap()).unwrap();
             let dsl = traverse(tree);
-            Ok(dsl)
+            Ok(json!({ "query": dsl }))
         }
         Err(_) => {
             /*
@@ -50,7 +44,7 @@ pub fn convert(input: String) -> Result<String, ParseError> {
 
 use pest::iterators::Pair;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Node {
     AndExpr {
         left: Box<Node>,
@@ -112,31 +106,32 @@ fn simplify_ast(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
     }
 }
 
-fn traverse(n: Node) -> String {
+fn traverse(n: Node) -> serde_json::Value {
+    let walk_result = walk_tree(n.clone());
     match n {
-        Node::CompExpr { .. } => return format!(r#"{{"bool" : {{"must" : [{}]}}}}"#, walk_tree(n)),
-        _ => return walk_tree(n),
+        Node::CompExpr { .. } => return json!({"bool" : {"must" : [walk_result]}}),
+        _ => return walk_result,
     }
 }
 
-fn walk_tree2(n: Node) -> serde_json::Value {
+fn walk_tree(n: Node) -> serde_json::Value {
     match n {
         Node::AndExpr { left, right } => {
-            let left_str = walk_tree(*left);
-            let right_str = walk_tree(*right);
+            let left_val = walk_tree(*left);
+            let right_val = walk_tree(*right);
             return serde_json::json!({
                 "bool" : {
-                    "must" : format!("[{}, {}]", left_str, right_str),
+                    "must" : [left_val, right_val]
                 }
             });
         }
         Node::OrExpr { left, right } => {
-            let left_str = walk_tree(*left);
-            let right_str = walk_tree(*right);
+            let left_val = walk_tree(*left);
+            let right_val = walk_tree(*right);
 
             return json!({
                 "bool" : {
-                    "should" : format!("[{}, {}]", left_str, right_str)
+                    "should" : [left_val, right_val]
                 }
             });
         }
@@ -163,8 +158,8 @@ fn walk_tree2(n: Node) -> serde_json::Value {
                 return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
             }
             "in" => {
-                let x = rhs.replace("\'", "\"");
-                let r_vec: Vec<&str> = x
+                let rhs = rhs.replace("\'", "\"");
+                let r_vec: Vec<&str> = rhs
                     .trim_left_matches("(")
                     .trim_right_matches(")")
                     .split(",")
@@ -174,81 +169,13 @@ fn walk_tree2(n: Node) -> serde_json::Value {
                 });
             }
             "not in" => {
-                let x = rhs.replace("\'", "\"");
-                let r_vec: Vec<&str> = x
+                let rhs = rhs.replace("\'", "\"");
+                let r_vec: Vec<&str> = rhs
                     .trim_left_matches("(")
                     .trim_right_matches(")")
                     .split(",")
                     .collect();
                 return json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}});
-            }
-            _ => unreachable!(),
-        },
-    }
-}
-fn walk_tree(n: Node) -> String {
-    match n {
-        Node::AndExpr { left, right } => {
-            let left_str = walk_tree(*left);
-            let right_str = walk_tree(*right);
-            return format!(
-                r##"{{"bool" : {{"must" : [{}, {}]}}}}"##,
-                left_str, right_str
-            );
-        }
-        Node::OrExpr { left, right } => {
-            let left_str = walk_tree(*left);
-            let right_str = walk_tree(*right);
-            return format!(
-                r##"{{"bool" : {{"should" : [{}, {}]}}}}"##,
-                left_str, right_str
-            );
-        }
-        Node::CompExpr { lhs, op, rhs } => match op.as_str() {
-            "=" | "like" => {
-                return format!(
-                    r##"{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}"##,
-                    lhs, rhs
-                );
-            }
-            ">=" => {
-                return format!(r##"{{"range" : {{"{}" : {{"from" : "{}"}}}}}}""##, lhs, rhs);
-            }
-            "<=" => {
-                return format!(r##"{{"range" : {{"{}" : {{"to" : "{}"}}}}}}""##, lhs, rhs);
-            }
-            ">" => {
-                return format!(r##"{{"range" : {{"{}" : {{"gt" : "{}"}}}}}}""##, lhs, rhs);
-            }
-            "<" => {
-                return format!(r##"{{"range" : {{"{}" : {{"lt" : "{}"}}}}}}""##, lhs, rhs);
-            }
-            "!=" | "<>" => {
-                return format!(r##"{{"bool" : {{"must_not" : [{{"match" : {{"{}" : {{"query" : "{}", "type" : "phrase"}}}}}}]}}}}"##, lhs, rhs);
-            }
-            "in" => {
-                return format!(
-                    r##"{{"terms" : {{"{}" : {}}}}}"##,
-                    lhs,
-                    "[".to_string()
-                        + rhs
-                            .replace("\'", "\"")
-                            .trim_left_matches("(")
-                            .trim_right_matches(")")
-                        + "]"
-                );
-            }
-            "not in" => {
-                return format!(
-                    r##"{{"bool" : {{"must_not" : {{"terms" : {{"{}" : {} }}}}}}}}"##,
-                    lhs,
-                    "[".to_string()
-                        + rhs
-                            .replace("\'", "\"")
-                            .trim_left_matches("(")
-                            .trim_right_matches(")")
-                        + "]"
-                );
             }
             _ => unreachable!(),
         },
