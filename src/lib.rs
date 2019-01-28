@@ -167,6 +167,7 @@ fn walk_tree(n: Node) -> serde_json::Value {
                     .trim_left_matches("(")
                     .trim_right_matches(")")
                     .split(",")
+                    .map(|v| v.trim())
                     .collect();
                 return json!({
                     "terms" : {lhs : r_vec}
@@ -178,6 +179,7 @@ fn walk_tree(n: Node) -> serde_json::Value {
                     .trim_left_matches("(")
                     .trim_right_matches(")")
                     .split(",")
+                    .map(|v| v.trim())
                     .collect();
                 return json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}});
             }
@@ -199,15 +201,20 @@ mod tests {
 
     #[test]
     fn test_convert() {
-        let test_cases: Vec<TestCase> = vec![TestCase {
-            input: "a=1".to_string(),
-            output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
-        }];
+        let test_cases: Vec<TestCase> = vec![
+            TestCase {
+                input: "a=1".to_string(),
+                output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
+            },
+            TestCase {
+                input: "a in (1,2,3)".to_string(),
+                output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
+            },
+        ];
         test_cases.iter().for_each(|case| {
-            assert_eq!(
-                convert(case.input.clone(), 1000, 1000).unwrap(),
-                case.output
-            )
+            let output = convert(case.input.clone(), 1000, 1000).unwrap();
+            println!("{}", &output);
+            assert_eq!(output, case.output)
         });
     }
 }

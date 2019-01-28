@@ -15,7 +15,7 @@ or_expr = {
     (paren_bool | comp_expr)  ~ "or" ~ (expr)
 }
 
-paren_bool = { "(" ~ (expr) ~  ")" }
+paren_bool = { "(" ~ expr ~  ")" }
 
 comp_expr = { field ~ op ~ value }
 
@@ -32,7 +32,12 @@ lte = { "<=" }
 like = { "like" }
 not_like = { "not" ~ "like" }
 
-value = { string_literal | num_literal }
+value = {
+    string_literal
+    | num_literal
+    | "(" ~ string_literal ~("," ~ string_literal)* ~ ")"
+    | "(" ~ num_literal ~("," ~ num_literal)* ~ ")"
+}
 
 num_literal = @{
     "-"?
