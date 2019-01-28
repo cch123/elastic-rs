@@ -210,6 +210,10 @@ mod tests {
                 input: "a in (1,2,3)".to_string(),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
+            TestCase {
+                input: "a in (   1, 2,  3)".to_string(),
+                output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
+            },
         ];
         test_cases.iter().for_each(|case| {
             let output = convert(case.input.clone(), 1000, 1000).unwrap();
