@@ -23,7 +23,6 @@ pub fn convert(query: String, from: i32, size: i32) -> Result<serde_json::Value,
     match parse_result {
         Ok(mut expr_ast) => {
             let dsl = walk_tree(expr_ast.next().unwrap(), true);
-            //let dsl = traverse(tree);
             Ok(json!({
                "query": dsl,
                "from" : from,
@@ -81,14 +80,17 @@ fn walk_tree(record: Pair<Rule>, is_root: bool) -> serde_json::Value {
                 iter.next().unwrap().as_str().to_string(),
             );
 
-            let mut result: serde_json::Value;
-            match op {
-                Rule::eq | Rule::like => result = json!({"match" : {lhs : {"query" : rhs, "type" : "phrase" } } }),
-                Rule::gte => result = json!({"range" : {lhs : {"from" : rhs}}}),
-                Rule::lte => result = json!({"range" : {lhs : {"to" : rhs}}}),
-                Rule::gt => result = json!({"range" : {lhs : {"gt" : rhs}}}),
-                Rule::lt => result = json!({"range" : {lhs : {"lt" : rhs}}}),
-                Rule::neq => result = json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}}),
+            let result = match op {
+                Rule::eq | Rule::like => {
+                    json!({"match" : {lhs : {"query" : rhs, "type" : "phrase" } } })
+                }
+                Rule::gte => json!({"range" : {lhs : {"from" : rhs}}}),
+                Rule::lte => json!({"range" : {lhs : {"to" : rhs}}}),
+                Rule::gt => json!({"range" : {lhs : {"gt" : rhs}}}),
+                Rule::lt => json!({"range" : {lhs : {"lt" : rhs}}}),
+                Rule::neq => {
+                    json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}})
+                }
                 Rule::op_in => {
                     let rhs = rhs.replace("\'", "\"");
                     let r_vec: Vec<&str> = rhs
@@ -97,9 +99,7 @@ fn walk_tree(record: Pair<Rule>, is_root: bool) -> serde_json::Value {
                         .split(",")
                         .map(|v| v.trim())
                         .collect();
-                    result = json!({
-                        "terms" : {lhs : r_vec}
-                    });
+                    json!({"terms" : {lhs : r_vec}})
                 }
                 Rule::op_not_in => {
                     let rhs = rhs.replace("\'", "\"");
@@ -109,18 +109,14 @@ fn walk_tree(record: Pair<Rule>, is_root: bool) -> serde_json::Value {
                         .split(",")
                         .map(|v| v.trim())
                         .collect();
-                    result = json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}});
+                    json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}})
                 }
 
                 _ => unreachable!(),
-            }
+            };
 
             if is_root {
-                return json!({
-                    "bool" : {
-                        "must" : [result]
-                    }
-                });
+                return json!({"bool" : {"must" :[result]}});
             }
             return result;
         }
