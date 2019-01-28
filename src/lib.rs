@@ -54,7 +54,7 @@ enum Node {
     },
     CompExpr {
         lhs: String,
-        op: String,
+        operator: Rule,
         rhs: String,
     },
 }
@@ -90,13 +90,13 @@ fn simplify_ast(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
             let mut iter = record.into_inner();
             let (field, op, value) = (
                 iter.next().unwrap().as_str().to_string(),
-                iter.next().unwrap().as_str().to_string(),
+                iter.next().unwrap().into_inner().next().unwrap().as_rule(),
                 iter.next().unwrap().as_str().to_string(),
             );
 
             return Ok(Node::CompExpr {
                 lhs: field,
-                op,
+                operator: op,
                 rhs: value,
             });
         }
@@ -107,11 +107,13 @@ fn simplify_ast(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
 fn traverse(n: Node) -> serde_json::Value {
     let walk_result = walk_tree(n.clone());
     match n {
-        Node::CompExpr { .. } => return json!({
-            "bool" : {
-                "must" : [walk_result]
-            }
-        }),
+        Node::CompExpr { .. } => {
+            return json!({
+                "bool" : {
+                    "must" : [walk_result]
+                }
+            });
+        }
         _ => return walk_result,
     }
 }
@@ -137,8 +139,8 @@ fn walk_tree(n: Node) -> serde_json::Value {
                 }
             });
         }
-        Node::CompExpr { lhs, op, rhs } => match op.as_str() {
-            "=" | "like" => {
+        Node::CompExpr { lhs, operator, rhs } => match operator {
+            Rule::eq | Rule::like => {
                 return json!({
                     "match" : {
                         lhs : {
@@ -148,18 +150,18 @@ fn walk_tree(n: Node) -> serde_json::Value {
                     }
                 });
             }
-            ">=" => {
+            Rule::gte => {
                 return json!({"range" : {lhs : {"from" : rhs}}});
             }
-            "<=" => {
+            Rule::lte => {
                 return json!({"range" : {lhs : {"to" : rhs}}});
             }
-            ">" => return json!({"range" : {lhs : {"gt" : rhs}}}),
-            "<" => return json!({"range" : {lhs : {"lt" : rhs}}}),
-            "!=" | "<>" => {
+            Rule::gt => return json!({"range" : {lhs : {"gt" : rhs}}}),
+            Rule::lt => return json!({"range" : {lhs : {"lt" : rhs}}}),
+            Rule::neq => {
                 return json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}});
             }
-            "in" => {
+            Rule::op_in => {
                 let rhs = rhs.replace("\'", "\"");
                 let r_vec: Vec<&str> = rhs
                     .trim_left_matches("(")
@@ -170,7 +172,7 @@ fn walk_tree(n: Node) -> serde_json::Value {
                     "terms" : {lhs : r_vec}
                 });
             }
-            "not in" => {
+            Rule::op_not_in => {
                 let rhs = rhs.replace("\'", "\"");
                 let r_vec: Vec<&str> = rhs
                     .trim_left_matches("(")
@@ -179,6 +181,7 @@ fn walk_tree(n: Node) -> serde_json::Value {
                     .collect();
                 return json!({"bool" : {"must_not" : {"terms" : { lhs : r_vec}}}});
             }
+
             _ => unreachable!(),
         },
     }
