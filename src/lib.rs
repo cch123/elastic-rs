@@ -14,29 +14,27 @@ pub struct ExprParser;
 
 #[derive(Debug)]
 pub struct ParseError {
-    location: i32,
+    location: pest::error::InputLocation,
     expected: String,
-    the_char: char,
 }
 
-pub fn convert(query: String) -> Result<serde_json::Value, ParseError> {
+pub fn convert(query: String, from: i32, size: i32) -> Result<serde_json::Value, ParseError> {
     let parse_result = ExprParser::parse(Rule::expr, query.as_str());
     match parse_result {
         Ok(mut expr_ast) => {
             let tree = simplify_ast(expr_ast.next().unwrap()).unwrap();
             let dsl = traverse(tree);
-            Ok(json!({ "query": dsl }))
+            Ok(json!({
+               "query": dsl,
+               "from" : from,
+               "size" : size,
+            }))
         }
-        Err(_) => {
-            /*
-            dbg!(err.variant);
-            dbg!(err.location);
-            dbg!(err.line_col);
-            */
+        Err(err) => {
+            // TODO: more friendly error
             Err(ParseError {
-                location: 0,
+                location: err.location,
                 expected: "".to_string(),
-                the_char: 'c',
             })
         }
     }
@@ -109,7 +107,11 @@ fn simplify_ast(record: Pair<Rule>) -> Result<Node, Error<Rule>> {
 fn traverse(n: Node) -> serde_json::Value {
     let walk_result = walk_tree(n.clone());
     match n {
-        Node::CompExpr { .. } => return json!({"bool" : {"must" : [walk_result]}}),
+        Node::CompExpr { .. } => return json!({
+            "bool" : {
+                "must" : [walk_result]
+            }
+        }),
         _ => return walk_result,
     }
 }
@@ -194,14 +196,15 @@ mod tests {
 
     #[test]
     fn test_convert() {
-        let test_cases: Vec<TestCase> = vec![
-            TestCase {
-                input : "a=1".to_string(),
-                output : json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}})
-            }
-        ];
-        test_cases
-            .iter()
-            .for_each(|case| assert_eq!(convert(case.input.clone()).unwrap(), case.output));
+        let test_cases: Vec<TestCase> = vec![TestCase {
+            input: "a=1".to_string(),
+            output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
+        }];
+        test_cases.iter().for_each(|case| {
+            assert_eq!(
+                convert(case.input.clone(), 1000, 1000).unwrap(),
+                case.output
+            )
+        });
     }
 }
