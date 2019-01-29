@@ -139,8 +139,8 @@ mod tests {
     use super::convert;
     use serde_json::json;
 
-    struct TestCase {
-        input: String,
+    struct TestCase <'a>{
+        input: (&'a str, i32, i32, Vec<&'a str>), // query, from, size, sort
         output: serde_json::Value,
     }
 
@@ -148,21 +148,21 @@ mod tests {
     fn test_convert() {
         let test_cases: Vec<TestCase> = vec![
             TestCase {
-                input: "a=1".to_string(),
+                input: ("a=1", 1, 1, vec!["a asc", "b desc"]),
                 output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
             },
             TestCase {
-                input: "a in (1,2,3)".to_string(),
+                input: ("a in (1,2,3)", 1, 1, vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
             TestCase {
-                input: "a in (   1, 2,  3)".to_string(),
+                input: ("a in (   1, 2,  3)", 1,1, vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
 
         ];
         test_cases.iter().for_each(|case| {
-            let output = convert(case.input.clone(), 1000, 1000, vec![]).unwrap();
+            let output = convert(case.input.0.to_string(), 1000, 1000, vec![]).unwrap();
             println!("{}", &output);
             assert_eq!(output, case.output)
         });
