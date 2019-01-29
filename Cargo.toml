@@ -3,6 +3,9 @@ name = "elastic_query"
 version = "0.1.0"
 authors = ["Xargin <cao1988228@163.com>"]
 edition = "2018"
+license = "MIT"
+description = "convert bool expression to elasticsearch DSL"
+
 
 [dependencies]
 pest = "2.0"
