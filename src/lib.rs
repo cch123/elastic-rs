@@ -24,7 +24,7 @@ pub fn convert(query: String, from: i32, size: i32, sort: Vec<&str>) -> Result<s
         Ok(mut expr_ast) => {
             let dsl = walk_tree(expr_ast.next().unwrap(), true);
             let sort_arr:Vec<String> = sort.iter().map(|&s| {
-                let elem:Vec<&str> = s.split(" ").collect();
+                let elem:Vec<&str> = s.split_whitespace().collect();
                 "{".to_string() + elem[0] + " : " + elem[1] + "}"
             }).collect();
 
