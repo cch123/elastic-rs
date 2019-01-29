@@ -18,15 +18,23 @@ pub struct ParseError {
     expected: String,
 }
 
-pub fn convert(query: String, from: i32, size: i32, sort: Vec<&str>) -> Result<serde_json::Value, ParseError> {
+pub fn convert(
+    query: String,
+    from: i32,
+    size: i32,
+    sort: Vec<&str>,
+) -> Result<serde_json::Value, ParseError> {
     let parse_result = ExprParser::parse(Rule::expr, query.as_str());
     match parse_result {
         Ok(mut expr_ast) => {
             let dsl = walk_tree(expr_ast.next().unwrap(), true);
-            let sort_arr:Vec<String> = sort.iter().map(|&s| {
-                let elem:Vec<&str> = s.split_whitespace().collect();
-                "{".to_string() + elem[0] + " : " + elem[1] + "}"
-            }).collect();
+            let sort_arr: Vec<String> = sort
+                .iter()
+                .map(|&s| {
+                    let elem: Vec<&str> = s.split_whitespace().collect();
+                    "{".to_string() + elem[0] + " : " + elem[1] + "}"
+                })
+                .collect();
 
             let mut result = json!({
                "query": dsl,
@@ -37,7 +45,7 @@ pub fn convert(query: String, from: i32, size: i32, sort: Vec<&str>) -> Result<s
             if sort_arr.len() > 0 {
                 result["sort"] = json!(sort_arr);
             }
-            return Ok(result)
+            return Ok(result);
         }
         Err(err) => {
             // TODO: more friendly error
@@ -90,17 +98,14 @@ fn walk_tree(record: Pair<Rule>, is_root: bool) -> serde_json::Value {
                 iter.next().unwrap().as_str().to_string(),
             );
 
+            #[rustfmt::skip]
             let result = match op {
-                Rule::eq | Rule::like => {
-                    json!({"match" : {lhs : {"query" : rhs, "type" : "phrase" } } })
-                }
+                Rule::eq | Rule::like => json!({"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}),
                 Rule::gte => json!({"range" : {lhs : {"from" : rhs}}}),
                 Rule::lte => json!({"range" : {lhs : {"to" : rhs}}}),
                 Rule::gt => json!({"range" : {lhs : {"gt" : rhs}}}),
                 Rule::lt => json!({"range" : {lhs : {"lt" : rhs}}}),
-                Rule::neq => {
-                    json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}})
-                }
+                Rule::neq => json!({"bool" : {"must_not" : [{"match" : {lhs : {"query" : rhs, "type" : "phrase"}}}]}}),
                 Rule::op_in => {
                     let rhs = rhs.replace("\'", "\"");
                     let r_vec: Vec<&str> = rhs
@@ -139,7 +144,7 @@ mod tests {
     use super::convert;
     use serde_json::json;
 
-    struct TestCase <'a>{
+    struct TestCase<'a> {
         input: (&'a str, i32, i32, Vec<&'a str>), // query, from, size, sort
         output: serde_json::Value,
     }
@@ -148,21 +153,20 @@ mod tests {
     fn test_convert() {
         let test_cases: Vec<TestCase> = vec![
             TestCase {
-                input: ("a=1", 1, 1, vec!["a asc", "b desc"]),
+                input: ("a=1", 1000, 1000, vec!["a asc", "b desc"]),
                 output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
             },
             TestCase {
-                input: ("a in (1,2,3)", 1, 1, vec![]),
+                input: ("a in (1,2,3)", 1000, 1000, vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
             TestCase {
-                input: ("a in (   1, 2,  3)", 1,1, vec![]),
+                input: ("a in (   1, 2,  3)", 1000, 1000, vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
-
         ];
         test_cases.iter().for_each(|case| {
-            let output = convert(case.input.0.to_string(), 1000, 1000, vec![]).unwrap();
+            let output = convert(case.input.0.to_string(), case.input.1, case.input.2, vec![]).unwrap();
             println!("{}", &output);
             assert_eq!(output, case.output)
         });
