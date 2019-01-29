@@ -43,7 +43,7 @@ example :
 add 
 
 ```
-elastic_query = "0.1.0"
+elastic_query = "0.4.0"
 ```
 
 to your Cargo.toml.
