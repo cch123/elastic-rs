@@ -40,10 +40,24 @@ Convert Bool Expression to Elasticsearch DSL.
 
 example :
 
+add 
+
+```
+elastic_query = "0.1.0"
+```
+
+to your Cargo.toml.
+
+then:
+
 ```rust
+extern crate elastic_query;
+
 fn main() {
-    println!("hello world");
+    let result = elastic_query::convert("a = 1 and b in (1,2,3)".to_string(), 0, 100, vec![], vec![]).unwrap();
+    println!("{}", result);
 }
+
 ```
 
 grammar :
