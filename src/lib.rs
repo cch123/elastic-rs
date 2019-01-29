@@ -81,15 +81,15 @@ fn build_aggs(aggs: Vec<&str>) -> serde_json::Value {
 }
 
 fn build_sort(sort: Vec<&str>) -> serde_json::Value {
-    let sort_arr: Vec<String> = sort
-        .iter()
+    sort.iter()
         .map(|&s| {
-            let elem: Vec<&str> = s.split_whitespace().collect();
-            "{".to_string() + elem[0] + " : " + elem[1] + "}"
+            let mut elem: Vec<&str> = s.split_whitespace().collect();
+            if elem.len() < 2 {
+                elem.push("asc");
+            }
+            json!({elem[0] : elem[1]})
         })
-        .collect();
-
-    json!(sort_arr)
+        .collect()
 }
 
 use pest::iterators::Pair;
@@ -190,6 +190,14 @@ mod tests {
             TestCase {
                 input: ("a=1", 1000, 1000, vec![], vec![]),
                 output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
+            },
+            TestCase {
+                input: ("a=1", 1000, 1000, vec!["a asc", "b desc"], vec![]),
+                output: json!({"from":1000,"query":{"bool":{"must":[{"match":{"a":{"query":"1","type":"phrase"}}}]}},"size":1000,"sort":[{"a":"asc"},{"b":"desc"}]}),
+            },
+            TestCase {
+                input: ("a=1", 0, 1000, vec!["a asc", "b"], vec![]),
+                output: json!({"from":0,"query":{"bool":{"must":[{"match":{"a":{"query":"1","type":"phrase"}}}]}},"size":1000,"sort":[{"a":"asc"},{"b":"asc"}]}),
             },
             TestCase {
                 input: ("a in (1,2,3)", 1000, 1000, vec![], vec![]),
