@@ -18,16 +18,26 @@ pub struct ParseError {
     expected: String,
 }
 
-pub fn convert(query: String, from: i32, size: i32) -> Result<serde_json::Value, ParseError> {
+pub fn convert(query: String, from: i32, size: i32, sort: Vec<&str>) -> Result<serde_json::Value, ParseError> {
     let parse_result = ExprParser::parse(Rule::expr, query.as_str());
     match parse_result {
         Ok(mut expr_ast) => {
             let dsl = walk_tree(expr_ast.next().unwrap(), true);
-            Ok(json!({
+            let sort_arr:Vec<String> = sort.iter().map(|&s| {
+                let elem:Vec<&str> = s.split(" ").collect();
+                "{".to_string() + elem[0] + " : " + elem[1] + "}"
+            }).collect();
+
+            let mut result = json!({
                "query": dsl,
                "from" : from,
                "size" : size,
-            }))
+            });
+
+            if sort_arr.len() > 0 {
+                result["sort"] = json!(sort_arr);
+            }
+            return Ok(result)
         }
         Err(err) => {
             // TODO: more friendly error
@@ -149,9 +159,10 @@ mod tests {
                 input: "a in (   1, 2,  3)".to_string(),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
+
         ];
         test_cases.iter().for_each(|case| {
-            let output = convert(case.input.clone(), 1000, 1000).unwrap();
+            let output = convert(case.input.clone(), 1000, 1000, vec![]).unwrap();
             println!("{}", &output);
             assert_eq!(output, case.output)
         });
