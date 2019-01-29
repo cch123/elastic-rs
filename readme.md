@@ -38,17 +38,16 @@ Convert Bool Expression to Elasticsearch DSL.
                                                     └─────────────────────────────────────────────┘
 ```
 
-example :
+Example:
 
-add 
+Add:
 
-```
+```toml
+[dependencies]
 elastic_query = "0.4.0"
 ```
 
-to your Cargo.toml.
-
-then:
+To your `Cargo.toml`, then use as follows:
 
 ```rust
 extern crate elastic_query;
@@ -60,7 +59,7 @@ fn main() {
 
 ```
 
-grammar :
+Grammar:
 
 ```peg
 bool_expr = { SOI ~ expr ~ EOI }
@@ -120,6 +119,5 @@ char = {
 }
 
 WHITESPACE = _{ " " | "\n" | "\r" }
-
 ```
 
