@@ -23,18 +23,12 @@ pub fn convert(
     from: i32,
     size: i32,
     sort: Vec<&str>,
+    aggs: Vec<&str>,
 ) -> Result<serde_json::Value, ParseError> {
     let parse_result = ExprParser::parse(Rule::expr, query.as_str());
     match parse_result {
         Ok(mut expr_ast) => {
             let dsl = walk_tree(expr_ast.next().unwrap(), true);
-            let sort_arr: Vec<String> = sort
-                .iter()
-                .map(|&s| {
-                    let elem: Vec<&str> = s.split_whitespace().collect();
-                    "{".to_string() + elem[0] + " : " + elem[1] + "}"
-                })
-                .collect();
 
             let mut result = json!({
                "query": dsl,
@@ -42,9 +36,14 @@ pub fn convert(
                "size" : size,
             });
 
-            if sort_arr.len() > 0 {
-                result["sort"] = json!(sort_arr);
+            if sort.len() > 0 {
+                result["sort"] = build_sort(sort);
             }
+
+            if aggs.len() > 0 {
+                result["aggregations"] = build_aggs(aggs);
+            }
+
             return Ok(result);
         }
         Err(err) => {
@@ -55,6 +54,42 @@ pub fn convert(
             })
         }
     }
+}
+
+fn build_aggs(aggs: Vec<&str>) -> serde_json::Value {
+    let mut result: serde_json::Value = json!({});
+    aggs.iter().enumerate().rev().for_each(|(idx, &field)| {
+        let previous_result = result.clone();
+
+        let size = if idx == 0 { 200 } else { 0 };
+
+        result = json!({
+            field : {
+                "terms" : {
+                    "field" : field,
+                    "size" : size,
+                }
+            }
+        });
+
+        if previous_result.as_object().unwrap().len() > 0 {
+            result[field]["aggregations"] = previous_result;
+        }
+    });
+
+    result
+}
+
+fn build_sort(sort: Vec<&str>) -> serde_json::Value {
+    let sort_arr: Vec<String> = sort
+        .iter()
+        .map(|&s| {
+            let elem: Vec<&str> = s.split_whitespace().collect();
+            "{".to_string() + elem[0] + " : " + elem[1] + "}"
+        })
+        .collect();
+
+    json!(sort_arr)
 }
 
 use pest::iterators::Pair;
@@ -145,7 +180,7 @@ mod tests {
     use serde_json::json;
 
     struct TestCase<'a> {
-        input: (&'a str, i32, i32, Vec<&'a str>), // query, from, size, sort
+        input: (&'a str, i32, i32, Vec<&'a str>, Vec<&'a str>), // query, from, size, sort, agg
         output: serde_json::Value,
     }
 
@@ -153,21 +188,32 @@ mod tests {
     fn test_convert() {
         let test_cases: Vec<TestCase> = vec![
             TestCase {
-                input: ("a=1", 1000, 1000, vec!["a asc", "b desc"]),
+                input: ("a=1", 1000, 1000, vec![], vec![]),
                 output: json!({"query" : {"bool" : {"must" : [{"match" :{"a" : {"query" : "1", "type" : "phrase"}}}]}}, "from" : 1000, "size" : 1000}),
             },
             TestCase {
-                input: ("a in (1,2,3)", 1000, 1000, vec![]),
+                input: ("a in (1,2,3)", 1000, 1000, vec![], vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
             TestCase {
-                input: ("a in (   1, 2,  3)", 1000, 1000, vec![]),
+                input: ("a in (   1, 2,  3)", 1000, 1000, vec![], vec![]),
                 output: json!({"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
+            },
+            TestCase {
+                input: ("a in (   1, 2,  3)", 1000, 1000, vec![], vec!["a", "b"]),
+                output: json!({"aggregations":{"a":{"aggregations":{"b":{"terms":{"field":"b","size":0}}},"terms":{"field":"a","size":200}}},"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
         ];
         test_cases.iter().for_each(|case| {
-            let output = convert(case.input.0.to_string(), case.input.1, case.input.2, vec![]).unwrap();
-            println!("{}", &output);
+            let output = convert(
+                case.input.0.to_string(),
+                case.input.1,
+                case.input.2,
+                case.input.3.clone(),
+                case.input.4.clone(),
+            )
+            .unwrap();
+            println!("{}", output);
             assert_eq!(output, case.output)
         });
     }
