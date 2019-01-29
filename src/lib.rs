@@ -10,7 +10,7 @@ use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "expr.pest"]
-pub struct ExprParser;
+struct ExprParser;
 
 #[derive(Debug)]
 pub struct ParseError {

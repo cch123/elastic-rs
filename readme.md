@@ -66,14 +66,29 @@ or_expr = {
     (paren_bool | comp_expr)  ~ "or" ~ (expr)
 }
 
-paren_bool = { "(" ~ (expr) ~  ")" }
+paren_bool = { "(" ~ expr ~  ")" }
 
 comp_expr = { field ~ op ~ value }
 
 field = @{ (ASCII_ALPHA ~ ASCII_ALPHANUMERIC*) }
-op = { "="| "!="| "<>"| "in" | "not in" | ">" | ">=" | "<" | "<=" | "like" }
+op = { eq | neq | op_in | op_not_in | gt | gte | lt | lte | like | not_like }
+eq = { "=" }
+neq = { "!=" | "<>"}
+op_in = { "in" }
+op_not_in= { "not" ~ "in"}
+gt = { ">" }
+gte = { ">=" }
+lt = { "<" }
+lte = { "<=" }
+like = { "like" }
+not_like = { "not" ~ "like" }
 
-value = { string_literal | num_literal }
+value = {
+    string_literal
+    | num_literal
+    | "(" ~ string_literal ~("," ~ string_literal)* ~ ")"
+    | "(" ~ num_literal ~("," ~ num_literal)* ~ ")"
+}
 
 num_literal = @{
     "-"?
@@ -93,3 +108,4 @@ char = {
 WHITESPACE = _{ " " | "\n" | "\r" }
 
 ```
+
