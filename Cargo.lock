@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "elastic"
+name = "elastic_query"
 version = "0.1.0"
 dependencies = [
  "pest 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,5 +1,5 @@
 [package]
-name = "elastic"
+name = "elastic_query"
 version = "0.1.0"
 authors = ["Xargin <cao1988228@163.com>"]
 edition = "2018"
