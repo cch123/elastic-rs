@@ -3,53 +3,52 @@
 Convert Bool Expression to Elasticsearch DSL.
 
 ```
-                                                              +----------------------------------------------------+
-                                                              |{                                                   |
-                                                              |    "query": {                                      |
-                                                              |        "bool": {                                   |
-                                                              |            "must": [{                              |
-                                                              |                "match": {                          |
-                                                              |                    "a": {                          |
-                                                              |                        "query": "1",               |
-                                                              |                        "type": "phrase"            |
-                                                              |                    }                               |
-                                                              |                }                                   |
-                                                              |            }, {                                    |
-                                                              |                "bool": {                           |
-                                                              |                    "must": [{                      |
-                                                              |                        "match": {                  |
-                                                              |                            "b": {                  |
-+----------------------------------+                          |                                "query": "2",       |
-|  a = 1 and (b = 2 and (c = 3))   |------------------------->|                                "type": "phrase"    |
-+----------------------------------+                          |                            }                       |
-                                                              |                        }                           |
-                                                              |                    }, {                            |
-                                                              |                        "match": {                  |
-                                                              |                            "c": {                  |
-                                                              |                                "query": "3",       |
-                                                              |                                "type": "phrase"    |
-                                                              |                            }                       |
-                                                              |                        }                           |
-                                                              |                    }]                              |
-                                                              |                }                                   |
-                                                              |            }]                                      |
-                                                              |        }                                           |
-                                                              |    }                                               |
-                                                              |}                                                   |
-                                                              +----------------------------------------------------+
+                                          +----------------------------------------------------+
+                                          |{                                                   |
+                                          |    "query": {                                      |
+                                          |        "bool": {                                   |
+                                          |            "must": [{                              |
+                                          |                "match": {                          |
+                                          |                    "a": {                          |
+                                          |                        "query": "1",               |
+                                          |                        "type": "phrase"            |
+                                          |                    }                               |
+                                          |                }                                   |
+                                          |            }, {                                    |
+                                          |                "bool": {                           |
+                                          |                    "must": [{                      |
+                                          |                        "match": {                  |
+                                          |                            "b": {                  |
++-----------------------------+           |                                "query": "2",       |
+|a = 1 and (b = 2 and (c = 3))|---------->|                                "type": "phrase"    |
++-----------------------------+           |                            }                       |
+                                          |                        }                           |
+                                          |                    }, {                            |
+                                          |                        "match": {                  |
+                                          |                            "c": {                  |
+                                          |                                "query": "3",       |
+                                          |                                "type": "phrase"    |
+                                          |                            }                       |
+                                          |                        }                           |
+                                          |                    }]                              |
+                                          |                }                                   |
+                                          |            }]                                      |
+                                          |        }                                           |
+                                          |    }                                               |
+                                          |}                                                   |
+                                          +----------------------------------------------------+
 ```
 
-example :
+Example:
 
-add 
+Add:
 
+```toml
+[dependencies]
+elastic_query = "0.4.0"
 ```
-elastic_query = "0.1.0"
-```
 
-to your Cargo.toml.
-
-then:
+To your `Cargo.toml`, then use as follows:
 
 ```rust
 extern crate elastic_query;
@@ -61,7 +60,7 @@ fn main() {
 
 ```
 
-grammar :
+Grammar:
 
 ```peg
 bool_expr = { SOI ~ expr ~ EOI }
@@ -121,6 +120,5 @@ char = {
 }
 
 WHITESPACE = _{ " " | "\n" | "\r" }
-
 ```
 
