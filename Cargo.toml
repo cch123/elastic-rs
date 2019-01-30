@@ -1,6 +1,6 @@
 [package]
 name = "elastic_query"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Xargin <cao1988228@163.com>"]
 edition = "2018"
 license = "MIT"
