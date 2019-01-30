@@ -203,6 +203,10 @@ mod tests {
                 input: ("a in (   1, 2,  3)", 1000, 1000, vec![], vec!["a", "b"]),
                 output: json!({"aggregations":{"a":{"aggregations":{"b":{"terms":{"field":"b","size":0}}},"terms":{"field":"a","size":200}}},"from":1000,"query":{"bool":{"must":[{"terms":{"a":["1","2","3"]}}]}},"size":1000}),
             },
+            TestCase {
+                input: ("a = 1 and (b = 2 and (c = 3))", 0, 1000, vec![], vec![]),
+                output: json!({"from":0,"query":{"bool":{"must":[{"match":{"a":{"query":"1","type":"phrase"}}},{"bool":{"must":[{"match":{"b":{"query":"2","type":"phrase"}}},{"match":{"c":{"query":"3","type":"phrase"}}}]}}]}},"size":1000}),
+            },
         ];
         test_cases.iter().for_each(|case| {
             let output = convert(
