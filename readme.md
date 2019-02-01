@@ -45,7 +45,7 @@ Add:
 
 ```toml
 [dependencies]
-elastic_query = "0.4.1"
+elastic_query = "0.4.3"
 ```
 
 To your `Cargo.toml`, then use as follows:

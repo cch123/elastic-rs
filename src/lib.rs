@@ -21,8 +21,11 @@ pub struct ParseError {
 
 /// convert user input to Elasticsearch DSL
 /// example :
+/// ```
 /// convert("a = 1 and (b = 2 and (c = 3)".to_string(), 0, 100, vec![], vec![])
+/// ```
 /// will generate result :
+/// ```
 /// {
 ///	"from": 0,
 ///	"query": {
@@ -57,6 +60,7 @@ pub struct ParseError {
 ///	},
 ///	"size": 100
 ///}
+/// ```
 pub fn convert(
     query: String,
     from: i32,
