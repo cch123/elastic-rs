@@ -12,12 +12,51 @@ use pest::Parser;
 #[grammar = "expr.pest"]
 struct ExprParser;
 
+/// error occurred when parsing user input
 #[derive(Debug)]
 pub struct ParseError {
-    location: pest::error::InputLocation,
-    expected: String,
+    pub location: pest::error::InputLocation,
+    pub expected: String,
 }
 
+/// convert user input to Elasticsearch DSL
+/// example :
+/// convert("a = 1 and (b = 2 and (c = 3)".to_string(), 0, 100, vec![], vec![])
+/// will generate result :
+/// {
+///	"from": 0,
+///	"query": {
+///		"bool": {
+///			"must": [{
+///				"match": {
+///					"a": {
+///						"query": "1",
+///						"type": "phrase"
+///					}
+///				}
+///			}, {
+///				"bool": {
+///					"must": [{
+///						"match": {
+///							"b": {
+///								"query": "2",
+///								"type": "phrase"
+///							}
+///						}
+///					}, {
+///						"match": {
+///							"c": {
+///								"query": "3",
+///								"type": "phrase"
+///							}
+///						}
+///					}]
+///				}
+///			}]
+///		}
+///	},
+///	"size": 100
+///}
 pub fn convert(
     query: String,
     from: i32,
