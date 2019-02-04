@@ -45,7 +45,7 @@ Add:
 
 ```toml
 [dependencies]
-elastic_query = "0.4.3"
+elastic_query = "0.4.4"
 ```
 
 To your `Cargo.toml`, then use as follows:
@@ -66,19 +66,11 @@ Grammar:
 bool_expr = { SOI ~ expr ~ EOI }
 
 expr = {
-    and_expr
-    | or_expr
-    | paren_bool
-    | comp_expr
+    (paren_bool | comp_expr) ~ ( (and_op|or_op)~ (paren_bool| comp_expr))*
 }
 
-and_expr = {
-    (paren_bool | comp_expr) ~ "and" ~ (expr)
-}
-
-or_expr = {
-    (paren_bool | comp_expr)  ~ "or" ~ (expr)
-}
+and_op = { "and" }
+or_op = { "or" }
 
 paren_bool = { "(" ~ expr ~  ")" }
 
