@@ -1,3 +1,5 @@
+#![recursion_limit = "1024"]
+
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
@@ -240,6 +242,7 @@ fn walk_tree(expr: Expression, is_root: bool) -> serde_json::Value {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
@@ -292,6 +295,11 @@ mod tests {
             TestCase {
                 input: ("a = 1 and b = 2 and c = 3", 0, 1000, vec![], vec![]),
                 output: json!({"from":0,"query":{"bool":{"must":[{"bool":{"must":[{"match":{"a":{"query":"1","type":"phrase"}}},{"match":{"b":{"query":"2","type":"phrase"}}}]}},{"match":{"c":{"query":"3","type":"phrase"}}}]}},"size":1000}),
+                comment: "left association test",
+            },
+            TestCase {
+                input: ("a = 1 and b = 2 and c = 3 and d = 4", 0, 1000, vec![], vec![]),
+                output: json!({"from":0,"query":{"bool":{"must":[{"bool":{"must":[{"bool":{"must":[{"match":{"a":{"query":"1","type":"phrase"}}},{"match":{"b":{"query":"2","type":"phrase"}}}]}},{"match":{"c":{"query":"3","type":"phrase"}}}]}},{"match":{"d":{"query":"4","type":"phrase"}}}]}},"size":1000}),
                 comment: "left association test",
             },
         ];
