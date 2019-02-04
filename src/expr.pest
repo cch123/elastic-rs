@@ -1,19 +1,11 @@
 bool_expr = { SOI ~ expr ~ EOI }
 
 expr = {
-    and_expr
-    | or_expr
-    | paren_bool
-    | comp_expr
+    (paren_bool | comp_expr) ~ ( (and_op|or_op)~ (paren_bool| comp_expr))*
 }
 
-and_expr = {
-    (paren_bool | comp_expr) ~ "and" ~ (expr)
-}
-
-or_expr = {
-    (paren_bool | comp_expr)  ~ "or" ~ (expr)
-}
+and_op = { "and" }
+or_op = { "or" }
 
 paren_bool = { "(" ~ expr ~  ")" }
 
