@@ -28,6 +28,40 @@ pub struct ParseError {
 /// convert("a = 1 and b = 2 and c = 3".to_string(), 0, 1000, vec![], vec![]);
 /// ```
 /// will generate result :
+/// ```json
+/// {
+///	"query": {
+///		"bool": {
+///			"must": [{
+///				"bool": {
+///					"must": [{
+///						"match": {
+///							"a": {
+///								"query": "1",
+///								"type": "phrase"
+///							}
+///						}
+///					}, {
+///						"match": {
+///							"b": {
+///								"query": "2",
+///								"type": "phrase"
+///							}
+///						}
+///					}]
+///				}
+///			}, {
+///				"match": {
+///					"c": {
+///						"query": "3",
+///						"type": "phrase"
+///					}
+///				}
+///			}]
+///		}
+///	}
+///}
+/// ```
 pub fn convert(
     query: String,
     from: i32,
