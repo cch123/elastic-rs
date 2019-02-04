@@ -244,6 +244,7 @@ fn walk_tree(expr: Expression, is_root: bool) -> serde_json::Value {
 mod tests {
     use serde_json::json;
 
+    #[allow(dead_code)]
     struct TestCase<'a> {
         input: (&'a str, i32, i32, Vec<&'a str>, Vec<&'a str>), // query, from, size, sort, agg
         output: serde_json::Value,
