@@ -1,10 +1,8 @@
 #![recursion_limit = "1024"]
 
-extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-extern crate serde_json;
 use pest::prec_climber::{Assoc, Operator, PrecClimber};
 use serde_json::json;
 
